@@ -1,0 +1,17 @@
+{
+  "name": "paradox-bot",
+  "version": "1.0.0",
+  "description": "Bot log",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Seb M",
+  "license": "ISC",
+  "dependencies": {
+    "@nut-tree/nut-js": "^2.0.1",
+    "@nut-tree/template-matcher": "^1.0.1",
+    "node-abort-controller": "^3.0.1",
+    "sound-play": "^1.1.0"
+  }
+}
