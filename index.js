@@ -7,31 +7,38 @@ const sound = require("sound-play");
 
 (async() => {
     const resources = [{
+            id: 1,
             name: 'fresno',
             time: 4900,
             nImg: 5
         }, {
+            id: 2,
             name: 'roble',
             time: 4900,
             nImg: 5
         },
         {
+            id: 3,
             name: 'castano',
             time: 4900,
             nImg: 4
         }, {
+            id: 4,
             name: 'arce',
             time: 11800,
             nImg: 5
         }, {
+            id: 5,
             name: 'nogal',
             time: 8900,
             nImg: 4
         }, {
+            id: 6,
             name: 'cerezo',
             time: 8900,
             nImg: 3
         }, {
+            id: 7,
             name: 'ebano',
             time: 12000,
             nImg: 1
@@ -39,117 +46,181 @@ const sound = require("sound-play");
     ];
 
     const mapData = [{
+            id: '-124',
+            forward: 2,
+            back: 4,
+            resources: []
+        }, {
+            id: '024',
+            forward: 3,
+            back: 4,
+            resources: []
+        }, {
+            id: '025',
+            forward: 3,
+            back: 4,
+            resources: []
+        }, {
+            id: '026',
+            forward: 3,
+            back: 4,
+            resources: []
+        }, {
+            id: '027',
+            forward: 3,
+            back: 4,
+            resources: []
+        }, {
+            id: '028',
+            forward: 3,
+            back: 4,
+            resources: []
+        }, {
             id: '130',
             forward: 2,
-            back: 4
+            back: 4,
+            resources: [3]
         }, {
             id: '230',
             forward: 3,
-            back: 4
+            back: 4,
+            resources: [3]
         }, {
             id: '231',
             forward: 2,
-            back: 1
+            back: 1,
+            resources: [1, 2]
         }, {
             id: '331',
             forward: 1,
-            back: 4
+            back: 4,
+            resources: [1, 5, 2]
         }, {
             id: '3312',
             forward: 1,
-            back: 4
+            back: 4,
+            resources: [1, 5, 2]
         }, {
             id: '330',
             forward: 2,
-            back: 3
+            back: 3,
+            resources: [3]
         }, {
             id: '430',
             forward: 3,
-            back: 4
+            back: 4,
+            resources: [2, 3, 5]
         }, {
             id: '431',
             forward: 2,
-            back: 1
+            back: 1,
+            resources: [1, 2, 5]
         }, {
             id: '030',
             forward: 2,
-            back: 0
+            back: 0,
+            resources: [3]
         }, {
             id: '531',
             forward: 1,
-            back: 4
+            back: 4,
+            resources: [2]
         }, {
             id: '630',
             forward: 2,
-            back: 4
+            back: 4,
+            resources: [6, 5, 1, 4]
         }, {
             id: '530',
             forward: 2,
-            back: 4
+            back: 4,
+            resources: [1, 3]
         }, {
             id: '730',
             forward: 2,
-            back: 4
+            back: 4,
+            resources: [5]
         }, {
             id: '830',
             forward: 2,
-            back: 4
+            back: 4,
+            resources: [7, 1, 5]
         }, {
             id: '930',
             forward: 1,
-            back: 4
+            back: 4,
+            resources: [5]
         }, {
             id: '929',
             forward: 4,
-            back: 3
+            back: 3,
+            resources: [1]
         }, {
             id: '829',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: [1]
         }, {
             id: '729',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: [1]
         },
         {
             id: '629',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: [1, 5]
         },
         {
             id: '529',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: [5, 3, 2, 1]
         },
         {
             id: '429',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: [1]
         }, {
             id: '329',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: []
         }, {
             id: '229',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: []
         }, {
             id: '129',
             forward: 4,
-            back: 2
+            back: 2,
+            resources: []
         }, {
             id: '029',
             forward: 3,
-            back: 2
+            back: 2,
+            resources: []
         },
     ]
 
 
     const delay = 2800;
     let running = true;
-    let starSamples = 18;
+    let starSamples = 20;
     let matchMapPos = 0.98;
-
+    let screenActive;
+    let regions;
+    let currentMap;
+    let isMoving = false;
+    let onBattle = false;
+    let changingMap = false;
+    let searchWidth = 100;
+    let exitConfidance = 0.999;
+    let isFailing = false;
+    let failCount = 0;
 
     console.log('STARTING BOT');
     screen.config.highlightDurationMs = 200;
@@ -167,19 +238,17 @@ const sound = require("sound-play");
     // Configure an Abort controller so that you can cancel the find operation at any time
     const controller = new AbortController();
     const { signal } = controller;
-    let screenActive;
-    let regions;
-    let currentMap;
-    let isMoving = false;
+
+
     try {
         screenActive = await screen.find(imageResource('screen.png'));
         console.log('GAME SCREEN DEFINED');
-        let searchWidth = 100
+
         console.log(screenActive.width - searchWidth)
         regions = [
             new Region(screenActive.left, screenActive.top, screenActive.width, searchWidth),
             new Region(screenActive.width - (searchWidth + 30), screenActive.top, (searchWidth + 30), screenActive.height),
-            new Region(screenActive.left, screenActive.height - searchWidth, screenActive.width, searchWidth),
+            new Region(screenActive.left, screenActive.height - searchWidth + 10, screenActive.width, searchWidth),
             new Region(screenActive.left, screenActive.top, searchWidth, screenActive.height),
         ];
 
@@ -195,10 +264,6 @@ const sound = require("sound-play");
     } catch (error) {
 
     }
-
-    let onBattle = false;
-
-    let changingMap = false;
     let negativeResults = [];
     while (running) {
         if (currentMap == false || isMoving) {
@@ -217,7 +282,7 @@ const sound = require("sound-play");
             } catch (error) {
                 console.log('No se detectan arboles');
                 await navigate();
-                currentMap = await getCurrentMap();
+
                 negativeResults = [];
 
 
@@ -358,6 +423,10 @@ const sound = require("sound-play");
 
     async function navigate() {
         console.log('NAVIGATOR////')
+        if (!currentMap) {
+            console.log('NO MAP////')
+            currentMap = await getCurrentMap();
+        }
         let prevMap = currentMap;
 
         try {
@@ -384,7 +453,7 @@ const sound = require("sound-play");
         let assets = getMapCordAssets();
         let tempPos;
         let mapFound;
-        const searchPosParams = new OptionalSearchParameters(regions[0], matchMapPos, searchMultipleScales, signal);
+        const searchPosParams = new OptionalSearchParameters(regions[0], matchMapPos - (failCount / 100) / 2, searchMultipleScales, signal);
         for (let index = 0; index < assets.length; index++) {
             try {
                 await screen.find(imageResource(assets[index]), searchPosParams);
@@ -399,9 +468,15 @@ const sound = require("sound-play");
         if (mapFound != undefined) {
             console.log('MAP DEFINED');
             console.log(tempPos);
+            failCount = 0;
+            isFailing = false;
 
             return tempPos
-        } else { return false }
+        } else {
+            isFailing = true;
+            failCount++;
+            return false
+        }
 
     }
 
@@ -413,8 +488,11 @@ const sound = require("sound-play");
 
         async function findExit(r) {
             let assets = getStarAssets();
-            await screen.highlight(r)
-            let tempConf = new OptionalSearchParameters(r, 0.995, searchMultipleScales, signal);
+            await screen.highlight(r);
+            let actualConf = exitConfidance - (failCount / 100) / 4;
+            console.log('FIND EXIT WITH CONFIDENCE');
+            console.log(actualConf);
+            let tempConf = new OptionalSearchParameters(r, actualConf, searchMultipleScales, signal);
             let tempData;
             for (let index = 0; index < assets.length; index++) {
                 try {
@@ -431,6 +509,13 @@ const sound = require("sound-play");
                 }
 
             }
+            if (!tempData) {
+                isFailing = true;
+                failCount++;
+            } else {
+                isFailing = false;
+                failCount = 0;
+            }
             return tempData
         }
         console.log('Returning exits');
@@ -442,24 +527,34 @@ const sound = require("sound-play");
 
     async function checkResources() {
         console.log('CHECKRESOURCES')
-        let resourceData = undefined;
-        for (let index = 0; index < resources.length; index++) {
+        if (currentMap.resources.length > 0) {
+            let resourceData = undefined;
+            let currentResources = [];
+            currentMap.resources.forEach(e => {
+                currentResources.push(resources.find(r => r.id == e))
+            });
 
-            try {
 
-                resourceData = {
-                    data: await checkWood(resources[index].name, resources[index].nImg),
-                    type: resources[index].name,
-                    time: resources[index].time,
+            for (let index = 0; index < currentResources.length; index++) {
+
+                try {
+
+                    resourceData = {
+                        data: await checkWood(currentResources[index].name, currentResources[index].nImg),
+                        type: currentResources[index].name,
+                        time: currentResources[index].time,
+                    }
+                    resourceData.data !== undefined ? index = currentResources.length : resourceData = undefined
+
+                } catch (error) {
+                    console.log('error en check')
                 }
-                resourceData.data !== undefined ? index = resources.length : resourceData = undefined
 
-            } catch (error) {
-                console.log('error en check')
             }
-
+            return resourceData;
+        } else {
+            console.log('Sin recursos en el mapa');
         }
-        return resourceData;
 
     }
 
