@@ -1,4 +1,4 @@
-const { screen, waitFor, straightTo, centerOf, mouse, OptionalSearchParameters, Region, imageResource, Button, right, up, down, left, sleep } = require("@nut-tree/nut-js");
+const { screen, keyboard, waitFor, straightTo, centerOf, mouse, OptionalSearchParameters, Region, imageResource, Button, right, up, down, left, sleep, Key } = require("@nut-tree/nut-js");
 require("@nut-tree/template-matcher");
 const { AbortController } = require("node-abort-controller");
 const sound = require("sound-play");
@@ -9,39 +9,44 @@ const sound = require("sound-play");
     const resources = [{
             id: 1,
             name: 'fresno',
-            time: 4900,
+            time: 3800,
             nImg: 5
         }, {
             id: 2,
             name: 'roble',
-            time: 4900,
+            time: 3800,
             nImg: 5
         },
         {
             id: 3,
             name: 'castano',
-            time: 4900,
+            time: 3800,
             nImg: 4
         }, {
             id: 4,
             name: 'arce',
-            time: 11800,
+            time: 11100,
             nImg: 5
         }, {
             id: 5,
             name: 'nogal',
-            time: 8900,
+            time: 7800,
             nImg: 4
         }, {
             id: 6,
             name: 'cerezo',
-            time: 8900,
+            time: 7800,
             nImg: 3
         }, {
             id: 7,
             name: 'ebano',
             time: 12000,
             nImg: 1
+        }, {
+            id: 8,
+            name: 'carpe',
+            time: 11100,
+            nImg: 3
         },
     ];
 
@@ -144,7 +149,7 @@ const sound = require("sound-play");
             id: '830',
             forward: 2,
             back: 4,
-            resources: [7, 1, 5]
+            resources: [7, 8, 1, 5]
         }, {
             id: '930',
             forward: 1,
@@ -207,11 +212,12 @@ const sound = require("sound-play");
     ]
 
 
-    const delay = 2800;
+    const delay = 2300;
     let running = true;
     let starSamples = 20;
     let matchMapPos = 0.98;
     let screenActive;
+    let isFull = false;
     let regions;
     let currentMap;
     let isMoving = false;
@@ -219,8 +225,11 @@ const sound = require("sound-play");
     let changingMap = false;
     let searchWidth = 100;
     let exitConfidance = 0.999;
+    let combatConfidance = 0.95;
     let isFailing = false;
     let failCount = 0;
+    let inCombat = false;
+    let intro = true;
 
     console.log('STARTING BOT');
     screen.config.highlightDurationMs = 200;
@@ -228,7 +237,7 @@ const sound = require("sound-play");
     screen.config.confidence = 0.70;
     screen.config.autoHighlight = true;
     mouse.config.mouseSpeed = 40000;
-    mouse.config.autoDelayMs = 300;
+    mouse.config.autoDelayMs = 50;
 
 
     // Configure the confidence you wish Nut to have before finding a match
@@ -266,14 +275,16 @@ const sound = require("sound-play");
     }
     let negativeResults = [];
     while (running) {
+
+        let check = await checkStatus();
         if (currentMap == false || isMoving) {
             currentMap = await getCurrentMap();
             isMoving = false;
         }
         console.log('START LOOP');
 
-        let check = await checkStatus();
-        if (check) {
+
+        if (check && !inCombat) {
             try {
                 let result = await checkResources();
                 console.log('Recolectando ' + result.type)
@@ -281,6 +292,7 @@ const sound = require("sound-play");
 
             } catch (error) {
                 console.log('No se detectan arboles');
+
                 await navigate();
 
                 negativeResults = [];
@@ -288,14 +300,153 @@ const sound = require("sound-play");
 
             }
         } else {
-            console.log('Esperando 7 segs....');
-            await wait(7000);
+            if (inCombat) {
+                await goCombat();
+
+            }
+            if (isFull) {
+                console.log('Moving to bank');
+                await goBank();
+
+            }
+
+            await wait(2000, 0);
         }
         // console.log(negativeResults);
 
     }
     console.log('Inventory FULL cerrando bot.');
 
+    async function goBank() {
+
+        let bankP = new OptionalSearchParameters(screenActive, 0.93, searchMultipleScales, signal);
+        try {
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('goHome.png'), bankP))))
+            await mouse.leftClick();
+            await wait(2000, 0);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('buho.png'), bankP))))
+            await mouse.leftClick();
+            await mouse.move(down(14))
+            await mouse.move(right(15))
+            await mouse.leftClick();
+            await wait(800, 0);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('caja1.png'), bankP))))
+            await mouse.leftClick();
+            await wait(1000, 0);
+            try {
+                await mouse.move(straightTo(centerOf(screen.find(imageResource('recursos.png'), bankP))))
+                await mouse.leftClick();
+                await wait(1000, 0);
+            } catch (error) {
+
+            }
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('caja2.png'), bankP))))
+            await cleanInventory();
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('closebank.png'), bankP))))
+            await mouse.leftClick();
+            await wait(300, 0);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('leftBank.png'), bankP))))
+            await mouse.leftClick();
+            await wait(1500);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('glovo.png'), bankP))))
+            await mouse.leftClick();
+            await mouse.move(down(14))
+            await mouse.move(right(15))
+            await mouse.leftClick();
+            await wait(300, 0);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('glovo2.png'), bankP))))
+            await mouse.leftClick();
+            await wait(1);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('zaap1.png'), bankP))))
+            await mouse.leftClick();
+            await mouse.move(down(85))
+            await mouse.move(right(15))
+            await mouse.leftClick();
+            await wait(2000);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('zaap3.png'), bankP))))
+            await mouse.leftClick();
+            await wait(500, 0);
+            await mouse.move(straightTo(centerOf(screen.find(imageResource('zaap4.png'), bankP))))
+            await mouse.leftClick();
+            await wait(500, 0);
+            isFull = false
+
+
+
+        } catch (error) {
+            console.log('log en banco');
+            console.log(error)
+
+        }
+
+        async function cleanInventory() {
+            let colorMatch = false;
+            await keyboard.pressKey(Key.LeftControl);
+
+            for (let index = 0; index < 20; index++) {
+                await mouse.leftClick();
+                await mouse.leftClick();
+                await wait(100, 0)
+            }
+            await keyboard.releaseKey(Key.LeftControl);
+
+        }
+    }
+
+    async function goCombat() {
+        console.log('COMBAT CALLED\\\\\\\\\\\\\\\\')
+        let combatParams = new OptionalSearchParameters(screenActive, combatConfidance, searchMultipleScales, signal);
+        await findAndDestroy();
+
+        async function findAndDestroy() {
+            console.log('FIND AND DESTROY');
+            let player;
+            let enemy;
+            try {
+                player = await centerOf(screen.find(imageResource('battle/me.png'), combatParams))
+                enemy = await findEnemy();
+            } catch (error) {
+
+            }
+            await wait(3000);
+            await spell(2, player);
+            await wait(200, 0);
+            await spell(1, enemy);
+            await checkStatus();
+
+            /////////////////SUBFUNCTIONS
+            async function findEnemy() {
+                let emy;
+                let enemyAssets = ['enemy1.png', 'enemy2.png', 'enemy3.png', 'enemy4.png'];
+
+                for (let index = 0; index < enemyAssets.length; index++) {
+                    try {
+                        emy = await centerOf(screen.find(imageResource(`battle/${enemyAssets[index]}`), fullSearchOptionsConfiguration))
+                        console.log('Enemy found');
+                    } catch (error) {
+
+                    }
+                }
+                return emy;
+
+            }
+            async function spell(spellId, playerR) {
+                console.log('spellCALLED');
+                try {
+                    await mouse.move(straightTo(centerOf(screen.find(imageResource(`battle/spell${spellId}.png`), combatParams))))
+                    await wait(500, 0);
+                    await mouse.leftClick();
+                    await mouse.move(straightTo(playerR))
+                    await wait(500, 0);
+                    await mouse.leftClick();
+
+                } catch (error) {
+
+                }
+
+            }
+        }
+    }
     async function collect(p) {
 
         let confirmRGBA = [{ R: 213, G: 207, B: 170, A: 255 }, { R: 213, G: 207, B: 170, A: 255 }, { R: 255, G: 102, B: 0, A: 255 }]
@@ -319,12 +470,12 @@ const sound = require("sound-play");
         }
     }
 
-    function wait(time) {
+    function wait(time, dl = delay) {
         return new Promise(function(resolve, reject) {
 
             setTimeout(() => {
                 resolve(true)
-            }, time + delay)
+            }, time + dl)
         }).then(() => {
                 // console.log('Restart loop');
 
@@ -335,27 +486,16 @@ const sound = require("sound-play");
     }
 
     async function checkStatus() {
+        console.log('CHECK STATUS\\\\\\\\\\\\\\\\')
         let canFind = true;
         await battleCheck() ? canFind = false : ''
         await lvlUpCheck() ? canFind = false : ''
-            // await checkInventory() ? canFind = false : ''
+        await checkInventory() ? canFind = false : ''
 
         async function battleCheck() {
-            console.log('CHECK INBATTLE');
-            const checksBattle = ['batalla1.png', 'batalla2.png']
-            let inCombat = false;
-            let check1, check2, checkEnd;
-
-            for (i = 0; i < checksBattle.length; i++) {
-                try {
-                    await screen.find(imageResource(checksBattle[i]), fullSearchOptionsConfiguration);
-                    await sound.play('./assets/audio/battle.wav')
-                    inCombat = true
-                } catch (error) {
-
-                }
-
-            }
+            console.log('CHECK IN - BATTLE');
+            await checkReady();
+            await checkInBattle();
             if (!inCombat) {
                 try {
                     await mouse.move(straightTo(centerOf(screen.find(imageResource('final_combate.png'), fullSearchOptionsConfiguration))))
@@ -365,6 +505,27 @@ const sound = require("sound-play");
                     // console.log(error);
                 }
             }
+            async function checkReady() {
+
+                try {
+                    await mouse.move(straightTo(centerOf(screen.find(imageResource('battle/listo.png'), fullSearchOptionsConfiguration))))
+                    await mouse.leftClick();
+                    mouse.move(up(200));
+                    inCombat = true;
+                } catch (error) {
+
+                }
+            }
+
+            async function checkInBattle() {
+                try {
+                    await screen.find(imageResource('batalla2.png'), fullSearchOptionsConfiguration);
+                    inCombat = true;
+                } catch (error) {
+                    inCombat = false;
+                }
+            }
+
 
             return inCombat;
 
@@ -387,28 +548,32 @@ const sound = require("sound-play");
             }
             return lvlPending
         }
-
         async function checkInventory() {
-            let isFull = false
-            const podsParams = new OptionalSearchParameters(screenActive, 1, searchMultipleScales, signal);
+            isFull = false;
+            let rgbCHECK = [{ R: 96, G: 190, B: 52, A: 255 }]
+            const podsParams = new OptionalSearchParameters(screenActive, 0.97, searchMultipleScales, signal);
             try {
-                posLvl = await screen.find(imageResource('inventarioLleno.png', podsParams));
-                await mouse.move(straightTo(centerOf(screen.find(imageResource('mochila.png'), fullSearchOptionsConfiguration))))
-                await mouse.leftClick();
-                await wait(2000);
-                await screen.find(imageResource('fullInventario.png'), fullSearchOptionsConfiguration);
-                isFull = true;
-                running = false;
-                await closeInventory();
+                let currentColor = await screen.colorAt(centerOf(screen.find(imageResource('inventarioLleno.png'), podsParams)));
+                let checkFull = rgbCHECK.find(e => {
+                    if (e.A == currentColor.A && e.B == currentColor.B) {
+                        console.log('Inventario lleno');
+                        isFull = true;
+                    }
+                })
+
+
+
+
+
             } catch (error) {
-                await closeInventory();
+
             }
 
             async function closeInventory() {
                 try {
                     await mouse.move(straightTo(centerOf(screen.find(imageResource('cerrarInventario.png'), fullSearchOptionsConfiguration))))
                     await mouse.leftClick();
-                    await wait(2000);
+                    await wait(2000, 0);
                 } catch (error) {
 
                 }
